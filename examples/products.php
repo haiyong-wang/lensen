@@ -6,10 +6,14 @@ use CjDropshipping\CjDropshippingSDK;
 
 try {
     // 初始化SDK
-    $cjApi = new CjDropshippingSDK('ddd', 'dddd');
+    $cjApi = new CjDropshippingSDK();
+    $accessToken = $cjApi->authenticate('ss', 'sss');
+    echo "Access Token: " . $accessToken . "\n";die;
     
     // 获取产品列表示例
     echo "获取产品列表:\n";
+    $cjApi = new CJDropshippingSDK();
+    $cjApi->setAccessToken('sssss');
     $products = $cjApi->products()->getList(1, 5);
     print_r($products);die;
     

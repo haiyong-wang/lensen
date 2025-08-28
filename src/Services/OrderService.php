@@ -2,12 +2,12 @@
 
 namespace CjDropshipping\Services;
 
-use GuzzleHttp\Client;
+use CjDropshipping\Http\CurlClient;
 use CjDropshipping\Auth\Authentication;
 
 class OrderService extends BaseService
 {
-    public function __construct(Client $client, Authentication $auth)
+    public function __construct(CurlClient $client, Authentication $auth)
     {
         parent::__construct($client, $auth);
     }

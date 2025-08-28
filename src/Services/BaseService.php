@@ -2,8 +2,7 @@
 
 namespace CjDropshipping\Services;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use CjDropshipping\Http\CurlClient;
 use CjDropshipping\Auth\Authentication;
 use CjDropshipping\Exceptions\ApiException;
 
@@ -12,7 +11,7 @@ abstract class BaseService
     protected $client;
     protected $auth;
 
-    public function __construct(Client $client, Authentication $auth)
+    public function __construct(CurlClient $client, Authentication $auth)
     {
         $this->client = $client;
         $this->auth = $auth;
@@ -24,57 +23,49 @@ abstract class BaseService
      * @param string $method HTTP方法
      * @param string $endpoint API端点
      * @param array $data 请求数据
+     * @param array $options 额外请求选项
      * @return array API响应
      * @throws ApiException 当API请求失败时抛出异常
      */
-    protected function request($method, $endpoint, $data = [])
+    protected function request($method, $endpoint, $data = [], $options = [])
     {
         try {
-            $options = [
-                'headers' => $this->auth->getAuthHeaders()
-            ];
-
-            // 根据请求方法添加数据
-            if (!empty($data)) {
-                if ($method === 'GET') {
-                    $options['query'] = $data;
-                } else {
-                    $options['json'] = $data;
-                }
-            }
-
-            // 发送请求
-            $response = $this->client->request($method, $endpoint, $options);
+            // 获取认证头信息
+            $authHeaders = $this->auth->getAuthHeaders();
             
-            // 解析响应
-            $body = (string) $response->getBody();
-            $result = json_decode($body, true);
-
-            // 检查JSON解析错误
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new ApiException('Failed to parse JSON response: ' . json_last_error_msg());
+            // 发送请求
+            switch (strtoupper($method)) {
+                case 'GET':
+                    $response = $this->client->get($endpoint, $data, $authHeaders);
+                    break;
+                    
+                case 'POST':
+                    $response = $this->client->post($endpoint, $data, $authHeaders);
+                    break;
+                    
+                case 'PUT':
+                    $response = $this->client->put($endpoint, $data, $authHeaders);
+                    break;
+                    
+                case 'DELETE':
+                    $response = $this->client->delete($endpoint, $data, $authHeaders);
+                    break;
+                    
+                default:
+                    throw new ApiException("Unsupported HTTP method: $method");
             }
-
-            return $result;
-        } catch (RequestException $e) {
-            // 处理Guzzle请求异常
-            if ($e->hasResponse()) {
-                $response = $e->getResponse();
-                $statusCode = $response->getStatusCode();
-                
-                // 如果是认证错误，清除token并重试
-                if ($statusCode === 401) {
-                    $this->auth->clearToken();
-                    return $this->request($method, $endpoint, $data);
-                }
-                
-                $body = (string) $response->getBody();
-                $error = json_decode($body, true) ?? $body;
-                
-                throw new ApiException("API request failed with status $statusCode: " . print_r($error, true));
-            } else {
-                throw new ApiException("API request failed: " . $e->getMessage());
+            
+            return $response;
+        } catch (ApiException $e) {
+            // 如果是认证错误，清除token并抛出异常
+            if (strpos($e->getMessage(), '401') !== false || 
+                strpos($e->getMessage(), 'Authentication failed') !== false) {
+                $this->auth->clearToken();
+                throw new ApiException('Authentication failed: Invalid or expired access token');
             }
+            
+            // 重新抛出其他异常
+            throw $e;
         }
     }
 
@@ -83,11 +74,12 @@ abstract class BaseService
      * 
      * @param string $endpoint API端点
      * @param array $params 查询参数
+     * @param array $options 额外请求选项
      * @return array
      */
-    protected function get($endpoint, $params = [])
+    protected function get($endpoint, $params = [], $options = [])
     {
-        return $this->request('GET', $endpoint, $params);
+        return $this->request('GET', $endpoint, $params, $options);
     }
 
     /**
@@ -95,11 +87,12 @@ abstract class BaseService
      * 
      * @param string $endpoint API端点
      * @param array $data 请求数据
+     * @param array $options 额外请求选项
      * @return array
      */
-    protected function post($endpoint, $data = [])
+    protected function post($endpoint, $data = [], $options = [])
     {
-        return $this->request('POST', $endpoint, $data);
+        return $this->request('POST', $endpoint, $data, $options);
     }
 
     /**
@@ -107,11 +100,12 @@ abstract class BaseService
      * 
      * @param string $endpoint API端点
      * @param array $data 请求数据
+     * @param array $options 额外请求选项
      * @return array
      */
-    protected function put($endpoint, $data = [])
+    protected function put($endpoint, $data = [], $options = [])
     {
-        return $this->request('PUT', $endpoint, $data);
+        return $this->request('PUT', $endpoint, $data, $options);
     }
 
     /**
@@ -119,10 +113,11 @@ abstract class BaseService
      * 
      * @param string $endpoint API端点
      * @param array $data 请求数据
+     * @param array $options 额外请求选项
      * @return array
      */
-    protected function delete($endpoint, $data = [])
+    protected function delete($endpoint, $data = [], $options = [])
     {
-        return $this->request('DELETE', $endpoint, $data);
+        return $this->request('DELETE', $endpoint, $data, $options);
     }
 }
