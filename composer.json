@@ -1,0 +1,32 @@
+{
+    "name": "lensen/cj-dropshipping-sdk",
+    "description": "An unofficial PHP SDK for CJ Dropshipping API",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "lensen",
+            "email": "1026281168@qq.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.3",
+        "guzzlehttp/guzzle": "^7.0",
+        "ext-json": "*"
+
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.7 | ^6.5 | ^7.5 | ^8.4 | ^9.3",
+        "monolog/monolog": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "CjDropshipping\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CjDropshipping\\Tests\\": "tests/"
+        }
+    }
+}
