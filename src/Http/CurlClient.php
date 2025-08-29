@@ -3,6 +3,7 @@
 namespace CjDropshipping\Http;
 
 use CjDropshipping\Exceptions\ApiException;
+use CjDropshipping\Logger\Logger;
 
 class CurlClient
 {
@@ -11,13 +12,14 @@ class CurlClient
         'Content-Type: application/json',
         'Accept: application/json'
     ];
+    private $logger;
 
     /**
      * 初始化cURL客户端
      * 
      * @param array $options 配置选项
      */
-    public function __construct($options = [])
+    public function __construct($options = [], Logger $logger = null)
     {
         $this->options = array_merge([
             'base_uri' => '',
@@ -25,7 +27,19 @@ class CurlClient
             'headers' => [],
             'verify_ssl' => false
         ], $options);
+        $this->logger = $logger;
     }
+
+    /**
+     * 设置日志记录器
+     * 
+     * @param Logger $logger
+     */
+    public function setLogger(Logger $logger)
+    {
+        $this->logger = $logger;
+    }
+
 
     /**
      * 设置选项
@@ -50,8 +64,17 @@ class CurlClient
      */
     public function request($method, $url, $data = [], $headers = [])
     {
+        // 记录请求开始时间
+        $startTime = microtime(true);
+
         // 处理URL
         $fullUrl = $this->buildUrl($url);
+
+        // 记录请求
+        if ($this->logger) {
+            $this->logger->logRequest($method, $fullUrl, $data, $headers);
+        }
+
         
         // 初始化cURL
         $ch = curl_init();
@@ -65,6 +88,12 @@ class CurlClient
         // 检查错误
         if (curl_errno($ch)) {
             $error = curl_error($ch);
+
+             // 记录cURL错误
+            if ($this->logger) {
+                $this->logger->logCurlError($error, $fullUrl, $method);
+            }
+
             curl_close($ch);
             throw new ApiException("cURL request failed: " . $error);
         }
@@ -80,13 +109,21 @@ class CurlClient
         
         // 检查JSON解析错误
         if (json_last_error() !== JSON_ERROR_NONE) {
+            
+            // 记录JSON解析错误
+            if ($this->logger) {
+                $this->logger->error($errorMsg, [
+                    'raw_response' => substr($response, 0, 1000) // 限制日志长度
+                ]);
+            }
+
             throw new ApiException('Failed to parse JSON response: ' . json_last_error_msg());
         }
         
         // 检查HTTP错误状态
-        if ($httpCode >= 400) {
-            throw new ApiException("API request failed with status $httpCode: " . print_r($result, true));
-        }
+        // if ($httpCode >= 400) {
+        //     throw new ApiException("API request failed with status $httpCode: " . print_r($result, true));
+        // }
         
         return $result;
     }

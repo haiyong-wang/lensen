@@ -5,17 +5,34 @@ namespace CjDropshipping\Services;
 use CjDropshipping\Http\CurlClient;
 use CjDropshipping\Auth\Authentication;
 use CjDropshipping\Exceptions\ApiException;
+use CJDropshipping\Logger\Logger;
+
 
 abstract class BaseService
 {
     protected $client;
     protected $auth;
+    protected $logger;
 
-    public function __construct(CurlClient $client, Authentication $auth)
+    public function __construct(CurlClient $client, Authentication $auth, Logger $logger = null)
     {
         $this->client = $client;
         $this->auth = $auth;
+        $this->logger = $logger;
     }
+
+    /**
+     * 设置日志记录器
+     * 
+     * @param Logger $logger
+     * @return self
+     */
+    public function setLogger(Logger $logger)
+    {
+        $this->logger = $logger;
+        return $this;
+    }
+
 
     /**
      * 统一发送授权请求到CJ Dropshipping API
@@ -54,9 +71,28 @@ abstract class BaseService
                 default:
                     throw new ApiException("Unsupported HTTP method: $method");
             }
+
+            // 记录API响应
+            if ($this->logger) {
+                $this->logger->info("API {$method} response", [
+                    'endpoint' => $endpoint,
+                    'response' => $response
+                ]);
+            }
+
             
             return $response;
         } catch (ApiException $e) {
+
+            // 记录API异常
+            if ($this->logger) {
+                $this->logger->exception($e, [
+                    'endpoint' => $endpoint,
+                    'method' => $method,
+                    'data' => $data
+                ]);
+            }
+            
             // 如果是认证错误，清除token并抛出异常
             if (strpos($e->getMessage(), '401') !== false || 
                 strpos($e->getMessage(), 'Authentication failed') !== false) {

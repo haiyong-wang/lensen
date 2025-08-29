@@ -6,6 +6,8 @@ use CjDropshipping\Auth\Authentication;
 use CjDropshipping\Services\ProductService;
 use CjDropshipping\Services\OrderService;
 use CjDropshipping\Http\CurlClient;
+use CJDropshipping\Logger\Logger;
+
 class CjDropshippingSDK
 {
     private $client;
@@ -20,7 +22,7 @@ class CjDropshippingSDK
      * @param array $options Guzzle客户端额外配置选项
      * @param bool $verifySSL 是否验证SSL证书
      */
-    public function __construct($accessToken = null, $options = [], $verifySSL = false)
+    public function __construct($accessToken = null, $options = [], $verifySSL = false, Logger $logger = null)
     {
         // 默认配置
         $defaultOptions = [
@@ -29,8 +31,7 @@ class CjDropshippingSDK
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ],
-            'verify' => $verifySSL
+            ]
         ];
 
         // 合并用户自定义配置
@@ -38,6 +39,13 @@ class CjDropshippingSDK
         
         // 创建Guzzle客户端实例
         $this->client = new CurlClient($clientOptions);
+
+        // 设置日志记录器
+        $this->logger = $logger;
+        if ($this->logger) {
+            $this->client->setLogger($logger);
+        }
+
         
         // 初始化认证服务（不需要API密钥和密钥）
         $this->auth = new Authentication($this->client);
@@ -47,6 +55,32 @@ class CjDropshippingSDK
             $this->auth->setAccessToken($accessToken);
         }
     }
+
+    /**
+     * 设置日志记录器
+     * 
+     * @param Logger $logger
+     * @return self
+     */
+    public function setLogger(Logger $logger)
+    {
+        $this->logger = $logger;
+        $this->client->setLogger($logger);
+        $this->auth->setLogger($logger);
+        return $this;
+    }
+
+
+     /**
+     * 获取日志记录器
+     * 
+     * @return Logger|null
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
 
     /**
      * 使用API密钥和密钥进行认证

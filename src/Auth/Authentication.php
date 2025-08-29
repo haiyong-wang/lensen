@@ -4,16 +4,31 @@ namespace CjDropshipping\Auth;
 
 use CjDropshipping\Http\CurlClient;
 use CjDropshipping\Exceptions\ApiException;
+use CjDropshipping\Logger\Logger;
 
 class Authentication
 {
     private $client;
     private $accessToken;
     private $tokenExpires;
+    private $logger;
 
-    public function __construct(CurlClient $client)
+    public function __construct(CurlClient $client, Logger $logger = null)
     {
+        $this->logger = $logger;
         $this->client = $client;
+    }
+
+    /**
+     * 设置日志记录器
+     * 
+     * @param Logger $logger
+     * @return self
+     */
+    public function setLogger(Logger $logger)
+    {
+        $this->logger = $logger;
+        return $this;
     }
 
     /**
@@ -36,11 +51,37 @@ class Authentication
                 $this->accessToken = $response['data']['accessToken'];
                 // 设置token过期时间（假设有效期为1小时）
                 $this->tokenExpires = time() + 3600;
+
+                // 记录认证成功
+                if ($this->logger) {
+                    $this->logger->info('Authentication successful', [
+                        'token' => substr($this->accessToken, 0, 10) . '...', // 部分隐藏token
+                        'expires_at' => date('Y-m-d H:i:s', $this->tokenExpires)
+                    ]);
+                }
+
                 return $this->accessToken;
             } else {
+
+                $errorMsg = 'Authentication failed: ' . json_encode($response);
+                
+                // 记录认证失败
+                if ($this->logger) {
+                    $this->logger->error($errorMsg, [
+                        'response' => $response
+                    ]);
+                }
+
                 throw new ApiException('Authentication failed: ' . json_encode($response));
             }
         } catch (ApiException $e) {
+            // 记录认证异常
+            if ($this->logger) {
+                $this->logger->exception($e, [
+                    'api_key' => substr($apiKey, 0, 8) . '...'
+                ]);
+            }
+
             throw new ApiException('Authentication request failed: ' . $e->getMessage());
         }
     }

@@ -3,18 +3,29 @@
 require_once '../vendor/autoload.php';
 
 use CjDropshipping\CjDropshippingSDK;
+use CjDropshipping\Logger\Logger;
 
 try {
     // 初始化SDK
-    $cjApi = new CjDropshippingSDK();
-    $accessToken = $cjApi->authenticate('ss', 'sss');
-    echo "Access Token: " . $accessToken . "\n";die;
+    // $cjApi = new CjDropshippingSDK();
+    // $accessToken = $cjApi->authenticate('ss', 'sss');
+    // echo "Access Token: " . $accessToken . "\n";die;
     
+    $logger = new Logger(
+        __DIR__ . '/../logs/cj_sdk_'.date('Y-m-d').'.log', // 日志文件路径
+        Logger::LEVEL_DEBUG,             // 日志级别
+        true                             // 启用日志
+    );
+
+    $cjApi = new CJDropshippingSDK();
+    $cjApi->setLogger($logger);
+
     // 获取产品列表示例
     echo "获取产品列表:\n";
-    $cjApi = new CJDropshippingSDK();
+    // $cjApi = new CJDropshippingSDK();
     $cjApi->setAccessToken('sssss');
     $products = $cjApi->products()->getList(1, 5);
+     echo "获取产品列表结束:\n";
     print_r($products);die;
     
     // 搜索产品示例
